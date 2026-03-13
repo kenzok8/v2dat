@@ -15,23 +15,79 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goos: [linux]
-        goarch: [amd64, arm64]
+        target:
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_generic
+          - arm_arm1176jzf-s_vfp
+          - arm_arm926ej-s
+          - arm_cortex-a15_neon-vfpv4
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9
+          - arm_cortex-a9_neon
+          - arm_cortex-a9_vfpv3-d16
+          - arm_fa526
+          - arm_xscale
+          - i386_pentium-mmx
+          - i386_pentium4
+          - mips64_octeonplus
+          - mips_24kc
+          - mips_4kec
+          - mips_mips32
+          - mipsel_24kc
+          - mipsel_24kc_24kf
+          - mipsel_74kc
+          - mipsel_mips32
+          - x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Build
+
+      - name: Build for OpenWrt target
+        shell: bash
         run: |
+          set -euo pipefail
+          target='${{ matrix.target }}'
+
+          GOOS=linux
+          GOARCH=
+          GOARM=
+          GOMIPS=
+
+          case "$target" in
+            aarch64_*) GOARCH=arm64 ;;
+            x86_64) GOARCH=amd64 ;;
+            i386_*) GOARCH=386 ;;
+
+            arm_arm1176jzf-s_vfp) GOARCH=arm; GOARM=6 ;;
+            arm_arm926ej-s|arm_fa526|arm_xscale) GOARCH=arm; GOARM=5 ;;
+            arm_cortex-a5_vfpv4|arm_cortex-a7|arm_cortex-a7_neon-vfpv4|arm_cortex-a8_vfpv3) GOARCH=arm; GOARM=7 ;;
+            arm_cortex-a9|arm_cortex-a9_neon|arm_cortex-a9_vfpv3-d16|arm_cortex-a15_neon-vfpv4) GOARCH=arm; GOARM=7 ;;
+
+            mips64_*) GOARCH=mips64 ;;
+            mips_24kc|mips_4kec|mips_mips32) GOARCH=mips; GOMIPS=softfloat ;;
+            mipsel_24kc|mipsel_24kc_24kf|mipsel_74kc|mipsel_mips32) GOARCH=mipsle; GOMIPS=softfloat ;;
+            *) echo "Unsupported target: $target"; exit 1 ;;
+          esac
+
           mkdir -p dist
-          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-            go build -trimpath -ldflags='-s -w' -o dist/v2dat-${{ matrix.goos }}-${{ matrix.goarch }} ./
-          sha256sum dist/* > dist/sha256sum-${{ matrix.goos }}-${{ matrix.goarch }}.txt
+          export CGO_ENABLED=0 GOOS GOARCH
+          [ -n "$GOARM" ] && export GOARM || true
+          [ -n "$GOMIPS" ] && export GOMIPS || true
+
+          echo "Building target=$target GOOS=$GOOS GOARCH=$GOARCH GOARM=${GOARM:-} GOMIPS=${GOMIPS:-}"
+          go build -trimpath -ldflags='-s -w' -o "dist/v2dat-linux-${target}" ./
+          sha256sum "dist/v2dat-linux-${target}" > "dist/sha256sum-linux-${target}.txt"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: v2dat-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: v2dat-${{ matrix.target }}
           path: dist/*
 
   release:
