@@ -1,0 +1,31 @@
+name: build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos: [linux]
+        goarch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
+            go build -trimpath -ldflags='-s -w' -o dist/v2dat-${{ matrix.goos }}-${{ matrix.goarch }} ./
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2dat-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
