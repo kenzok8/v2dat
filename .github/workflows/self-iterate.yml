@@ -44,13 +44,22 @@ jobs:
             git push origin "$BRANCH"
           fi
 
-      - name: Create PR
+      - name: Create/Update PR and enable auto-merge
         if: steps.upd.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.upd.outputs.branch }}
         run: |
-          gh pr create \
-            --base main \
-            --head "${{ steps.upd.outputs.branch }}" \
-            --title "chore: self-iterate dependencies" \
-            --body "Automated dependency refresh (scheduled twice weekly)."
+          set -euo pipefail
+          PR_URL=$(gh pr list --base main --head "$BRANCH" --state open --json url --jq '.[0].url')
+
+          if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
+            PR_URL=$(gh pr create \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore: self-iterate dependencies" \
+              --body "Automated dependency refresh (scheduled twice weekly).")
+          fi
+
+          echo "PR: $PR_URL"
+          gh pr merge "$PR_URL" --auto --squash || true
