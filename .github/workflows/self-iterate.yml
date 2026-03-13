@@ -1,0 +1,56 @@
+name: self-iterate
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 2 * * 2,5'  # 每周二/五 10:35 (Asia/Shanghai)
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deps-refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Update dependencies
+        id: upd
+        run: |
+          set -euo pipefail
+          go get -u ./...
+          go mod tidy
+          go test ./...
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            BRANCH="chore/self-iterate-$(date +%Y%m%d)"
+            echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git checkout -b "$BRANCH"
+            git add go.mod go.sum
+            git commit -m "chore: self-iterate dependencies"
+            git push origin "$BRANCH"
+          fi
+
+      - name: Create PR
+        if: steps.upd.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.upd.outputs.branch }}" \
+            --title "chore: self-iterate dependencies" \
+            --body "Automated dependency refresh (scheduled twice weekly)."
