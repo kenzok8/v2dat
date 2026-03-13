@@ -2,7 +2,7 @@ package unpack
 
 import (
 	"github.com/spf13/cobra"
-	"github.com/urlesistiana/v2dat/cmd"
+	"github.com/kenzok8/v2dat/cmd"
 )
 
 var unpack = &cobra.Command{

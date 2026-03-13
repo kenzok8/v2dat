@@ -1,8 +1,8 @@
 package unpack
 
 import (
-	"github.com/urlesistiana/v2dat/mlog"
-	"github.com/urlesistiana/v2dat/v2data"
+	"github.com/kenzok8/v2dat/mlog"
+	"github.com/kenzok8/v2dat/v2data"
 	"path/filepath"
 	"strings"
 )

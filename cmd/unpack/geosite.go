@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/spf13/cobra"
-	"github.com/urlesistiana/v2dat/v2data"
+	"github.com/kenzok8/v2dat/v2data"
 	"go.uber.org/zap"
 	"io"
 	"os"
