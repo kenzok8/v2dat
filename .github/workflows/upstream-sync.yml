@@ -1,0 +1,76 @@
+name: weekly-upstream-sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 2 * * 1'  # 每周一 10:23 Asia/Shanghai(UTC+8)
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/urlesistiana/v2dat.git || true
+          git fetch upstream main --tags
+
+      - name: Prepare sync branch
+        id: prep
+        run: |
+          set -euo pipefail
+          UP_SHA=$(git rev-parse upstream/main)
+          OR_SHA=$(git rev-parse origin/main)
+          echo "upstream_sha=$UP_SHA" >> "$GITHUB_OUTPUT"
+          echo "origin_sha=$OR_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ "$UP_SHA" = "$OR_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BRANCH="chore/upstream-sync-$(date +%Y%m%d)"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH" origin/main
+
+          if git merge --no-ff --no-edit upstream/main; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "merge_ok=true" >> "$GITHUB_OUTPUT"
+          else
+            git merge --abort || true
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "merge_ok=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Push and create PR
+        if: steps.prep.outputs.changed == 'true' && steps.prep.outputs.merge_ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BRANCH='${{ steps.prep.outputs.branch }}'
+          git push origin "$BRANCH"
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: weekly sync from upstream" \
+            --body "Automated weekly sync from upstream/main.\n\n- upstream: urlesistiana/v2dat\n- upstream sha: ${{ steps.prep.outputs.upstream_sha }}\n- origin sha:   ${{ steps.prep.outputs.origin_sha }}"
+
+      - name: Report merge conflict
+        if: steps.prep.outputs.changed == 'true' && steps.prep.outputs.merge_ok == 'false'
+        run: |
+          echo "Upstream has new commits but auto-merge conflicted. Manual sync needed."
+          exit 1
