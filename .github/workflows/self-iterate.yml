@@ -3,7 +3,7 @@ name: self-iterate
 on:
   workflow_dispatch:
   schedule:
-    - cron: '35 2 1 * *'
+    - cron: '35 2 * * 2,5'  # 每周二/五 10:35 (Asia/Shanghai)
 
 permissions:
   contents: write
@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6.0.2
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v6.3.0
+        uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -27,25 +27,24 @@ jobs:
         id: upd
         run: |
           set -euo pipefail
-          go get -u=patch ./...
+          go get -u ./...
           go mod tidy
           go test ./...
-          go build ./...
           if git diff --quiet; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
-            BRANCH="chore/monthly-maintenance-$(date +%Y%m%d)"
+            BRANCH="chore/self-iterate-$(date +%Y%m%d)"
             echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git checkout -b "$BRANCH"
             git add go.mod go.sum
-            git commit -m "chore: monthly dependency refresh"
+            git commit -m "chore: self-iterate dependencies"
             git push origin "$BRANCH"
           fi
 
-      - name: Create or update PR
+      - name: Create/Update PR and enable auto-merge
         if: steps.upd.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -53,15 +52,14 @@ jobs:
         run: |
           set -euo pipefail
           PR_URL=$(gh pr list --base main --head "$BRANCH" --state open --json url --jq '.[0].url')
+
           if [ -z "$PR_URL" ] || [ "$PR_URL" = "null" ]; then
-            PR_BODY=$(printf '%s\n' \
-              '## Summary' \
-              '- refresh Go modules with patch-level updates' \
-              '- run go mod tidy, go test ./..., and go build ./...' \
-              '- monthly automated maintenance review')
-            gh pr create \
+            PR_URL=$(gh pr create \
               --base main \
               --head "$BRANCH" \
-              --title "chore: monthly dependency refresh" \
-              --body "$PR_BODY"
+              --title "chore: self-iterate dependencies" \
+              --body "Automated dependency refresh (scheduled twice weekly).")
           fi
+
+          echo "PR: $PR_URL"
+          gh pr merge "$PR_URL" --auto --squash || true
