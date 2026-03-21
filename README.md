@@ -2,6 +2,10 @@
 
 A cli tool that can unpack v2ray data packages (also known as `geoip.dat` and `geosite.dat`) to text files.
 
+## Build Requirements
+
+- Go 1.25 or newer
+
 ## Usage
 
 ```shell
