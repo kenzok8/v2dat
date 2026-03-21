@@ -6,6 +6,41 @@ A cli tool that can unpack v2ray data packages (also known as `geoip.dat` and `g
 
 - Go 1.25 or newer
 
+## Release Notes Format
+
+Each release should use the same note structure:
+
+- Changed: behavior changes, dependency updates, version bumps, refactors that affect runtime or build requirements
+- Fixed: bug fixes, regressions, compatibility fixes
+- Docs: README or usage documentation updates
+- CI: workflow or automation changes that affect release/build pipeline
+- Verification: commands used to validate the release, such as `go test ./...` and `go build ./...`
+
+Suggested release note template:
+
+```md
+## Changed
+
+- ...
+
+## Fixed
+
+- ...
+
+## Docs
+
+- ...
+
+## CI
+
+- ...
+
+## Verification
+
+- go test ./...
+- go build ./...
+```
+
 ## Usage
 
 ```shell
