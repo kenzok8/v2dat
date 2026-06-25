@@ -1,8 +1,8 @@
 package unpack
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/kenzok8/v2dat/cmd"
+	"github.com/spf13/cobra"
 )
 
 var unpack = &cobra.Command{
@@ -13,8 +13,4 @@ var unpack = &cobra.Command{
 func init() {
 	unpack.AddCommand(newGeoSiteCmd(), newGeoIPCmd())
 	cmd.RootCmd.AddCommand(unpack)
-}
-
-func AddCommand(cmds ...*cobra.Command) {
-	unpack.AddCommand(cmds...)
 }

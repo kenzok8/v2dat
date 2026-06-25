@@ -3,8 +3,8 @@ package unpack
 import (
 	"bufio"
 	"fmt"
-	"github.com/spf13/cobra"
 	"github.com/kenzok8/v2dat/v2data"
+	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"io"
 	"os"
