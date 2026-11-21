@@ -33,7 +33,7 @@ func newGeoIPCmd() *cobra.Command {
 }
 
 func unpackGeoIP(args *unpackArgs) error {
-	filePath, wantTags, ourDir := args.file, args.filters, args.outDir
+	filePath, wantTags, outDir := args.file, args.filters, args.outDir
 	b, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -45,9 +45,9 @@ func unpackGeoIP(args *unpackArgs) error {
 
 	entries := make(map[string]*v2data.GeoIP)
 	var wantEntries map[string]*v2data.GeoIP
-	for _, geoSite := range geoIPList.GetEntry() {
-		tag := strings.ToLower(geoSite.GetCountryCode())
-		entries[tag] = geoSite
+	for _, geoIP := range geoIPList.GetEntry() {
+		tag := strings.ToLower(geoIP.GetCountryCode())
+		entries[tag] = geoIP
 	}
 
 	if len(wantTags) > 0 {
@@ -65,8 +65,8 @@ func unpackGeoIP(args *unpackArgs) error {
 
 	for tag, ipList := range wantEntries {
 		file := fmt.Sprintf("%s_%s.txt", fileName(filePath), tag)
-		if len(ourDir) > 0 {
-			file = filepath.Join(ourDir, file)
+		if len(outDir) > 0 {
+			file = filepath.Join(outDir, file)
 		}
 		logger.Info(
 			"unpacking entry",
