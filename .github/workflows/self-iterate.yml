@@ -14,12 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
 
@@ -62,4 +62,22 @@ jobs:
           fi
 
           echo "PR: $PR_URL"
-          gh pr merge "$PR_URL" --auto --squash || true
+          gh pr merge "$PR_URL" --auto --squash --delete-branch || true
+
+      - name: Close superseded self-iterate PRs
+        if: steps.upd.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.upd.outputs.branch }}
+        run: |
+          set -euo pipefail
+          # Each run branches from current main and bumps to the latest deps,
+          # so any older open self-iterate PR is superseded by this one.
+          gh pr list --base main --state open --limit 50 --json number,headRefName \
+            --jq -r '.[] | select(.headRefName | startswith("chore/self-iterate-")) | select(.headRefName != env.BRANCH) | "\(.number) \(.headRefName)"' |
+          while read -r num head; do
+            [ -n "$num" ] || continue
+            gh pr close "$num" --comment "Superseded by the latest self-iterate run ($BRANCH)." || true
+            git push origin --delete "$head" || true
+            echo "closed superseded PR #$num and deleted $head"
+          done
